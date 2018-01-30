@@ -173,6 +173,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
             combined_stats['total/episodes'] = mpi_mean(episodes)
             combined_stats['total/epochs'] = epoch + 1
             combined_stats['total/steps'] = t
+
+            logger.info('----------------------------------------')
+            logger.info(combined_stats)
             
             for key in sorted(combined_stats.keys()):
                 logger.record_tabular(key, combined_stats[key])
