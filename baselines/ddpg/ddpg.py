@@ -318,6 +318,9 @@ class DDPG(object):
         })
         self.actor_optimizer.update(actor_grads, stepsize=self.actor_lr)
         self.critic_optimizer.update(critic_grads, stepsize=self.critic_lr)
+        
+        # saver = tf.train.Saver()
+        # saver.save(self.sess, 'my-model', global_step=1)
 
         return critic_loss, actor_loss
 
@@ -376,3 +379,18 @@ class DDPG(object):
             self.sess.run(self.perturb_policy_ops, feed_dict={
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
+
+    def save_actor_critic(self, prefix = '/tmp/', filename='actor_critic.ckpt', id=None):
+        logger.warn('NOT IMPLEMENTED')
+        # Save the actor and critic models to file
+        saver = tf.train.Saver()
+        f = '_'.join([prefix, str(id), filename]) 
+        save_path = saver.save(self.sess, filename) #"/tmp/model.ckpt")
+        logger.warn("Model saved in path: %s" % save_path)
+        pass
+
+    def load_actor_critic(self, prefix = '/tmp/', filename='actor_critic.ckpt'):
+        logger.warn('NOT IMPLEMENTED')
+        saver.restore(self.sess, filename)
+        logger.warn("Model restored.")
+        pass

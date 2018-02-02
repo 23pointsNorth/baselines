@@ -26,8 +26,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
         actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
         reward_scale=reward_scale)
-    logger.info('Using agent with the following configuration:')
-    logger.info(str(agent.__dict__.items()))
+    
+    # logger.info('Using agent with the following configuration:')
+    # logger.info(str(agent.__dict__.items()))
 
     # Set up logging stuff only for a single worker.
     if rank == 0:
@@ -91,6 +92,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     obs = new_obs
 
                     if done:
+                        logger.warn('EPISODE OVER APPENDING STUFF!!!')
                         # Episode done.
                         epoch_episode_rewards.append(episode_reward)
                         episode_rewards_history.append(episode_reward)
@@ -100,6 +102,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         epoch_episodes += 1
                         episodes += 1
 
+                        # agent.save_actor_critic(id=episodes)
                         agent.reset()
                         obs = env.reset()
 
