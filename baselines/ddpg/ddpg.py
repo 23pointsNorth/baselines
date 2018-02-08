@@ -10,6 +10,7 @@ from baselines.common.mpi_adam import MpiAdam
 import baselines.common.tf_util as U
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 from mpi4py import MPI
+import os
 
 def normalize(x, stats):
     if stats is None:
@@ -141,6 +142,9 @@ class DDPG(object):
             self.setup_popart()
         self.setup_stats()
         self.setup_target_network_updates()
+
+        # Saver
+        self.saver = tf.train.Saver()
 
     def setup_target_network_updates(self):
         actor_init_updates, actor_soft_updates = get_target_updates(self.actor.vars, self.target_actor.vars, self.tau)
@@ -357,7 +361,7 @@ class DDPG(object):
         if self.param_noise is None:
             return 0.
 
-        # Perturb a separate copy of the policy to adjust the scale for the next "real" perturbation.
+        # Perturb a separate copy of the policy to adjust the scale for the next 'real' perturbation.
         batch = self.memory.sample(batch_size=self.batch_size)
         self.sess.run(self.perturb_adaptive_policy_ops, feed_dict={
             self.param_noise_stddev: self.param_noise.current_stddev,
@@ -380,17 +384,16 @@ class DDPG(object):
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
 
-    def save_actor_critic(self, prefix = '/tmp/', filename='actor_critic.ckpt', id=None):
-        logger.warn('NOT IMPLEMENTED')
+    def save_actor_critic(self, prefix = '/tmp/gym/models/', filename='ddpg_actor_critic.ckpt', id=None):
         # Save the actor and critic models to file
-        saver = tf.train.Saver()
-        f = '_'.join([prefix, str(id), filename]) 
-        save_path = saver.save(self.sess, filename) #"/tmp/model.ckpt")
-        logger.warn("Model saved in path: %s" % save_path)
-        pass
+        os.makedirs(prefix, exist_ok=True)
+        f = os.path.join(prefix, str(id) + '_' + filename) 
+        print('Saving model: {}'.format(f))
+        save_path = self.saver.save(self.sess, f)#,  global_step=id, max_to_keep) #filename) #
+        logger.warn(' Model saved in path: %s' % save_path)
 
-    def load_actor_critic(self, prefix = '/tmp/', filename='actor_critic.ckpt'):
-        logger.warn('NOT IMPLEMENTED')
-        saver.restore(self.sess, filename)
-        logger.warn("Model restored.")
-        pass
+    def load_actor_critic(self, prefix = '/tmp/gym/models/', filename='ddpg_actor_critic.ckpt', id=None):
+        f = os.path.join(prefix, str(id) + '_' + filename) 
+        print('Loading model: {}'.format(f))
+        self.saver.restore(self.sess, f)
+        logger.warn('Model restored.')

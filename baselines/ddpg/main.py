@@ -37,7 +37,7 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwar
     if evaluation and rank==0:
         eval_env = gym.make(env_id)
         eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
-        env = bench.Monitor(env, None)
+        # env = bench.Monitor(env, None)
     else:
         eval_env = None
 
@@ -113,6 +113,7 @@ def parse_args():
     parser.add_argument('--nb-rollout-steps', type=int, default=20)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--num-timesteps', type=int, default=None)
+    parser.add_argument('--load-network-id', type=int, default=None)
     boolean_flag(parser, 'evaluation', default=False)
     parser.add_argument('--custom-log-dir', type=str, default='./')
     args = parser.parse_args()

@@ -15,7 +15,7 @@ from mpi4py import MPI
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50):
+    tau=0.01, eval_env=None, param_noise_adaption_interval=50, load_network_id=None):
     rank = MPI.COMM_WORLD.Get_rank()
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -46,6 +46,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         sess.graph.finalize()
 
         agent.reset()
+        if (load_network_id):
+            agent.load_actor_critic(id=load_network_id)
+            
         obs = env.reset()
         if eval_env is not None:
             eval_obs = eval_env.reset()
@@ -102,7 +105,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         epoch_episodes += 1
                         episodes += 1
 
-                        # agent.save_actor_critic(id=episodes)
+                        if (episodes % 10 == 0):
+                            agent.save_actor_critic(id=episodes)
                         agent.reset()
                         obs = env.reset()
 
