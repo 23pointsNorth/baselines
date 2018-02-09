@@ -144,7 +144,7 @@ class DDPG(object):
         self.setup_target_network_updates()
 
         # Saver
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=int(1e2))
 
     def setup_target_network_updates(self):
         actor_init_updates, actor_soft_updates = get_target_updates(self.actor.vars, self.target_actor.vars, self.tau)
@@ -335,6 +335,13 @@ class DDPG(object):
         self.critic_optimizer.sync()
         self.sess.run(self.target_init_updates)
 
+    def update_lr(self, new_actor_lr=None, new_critic_lr=None):
+        if new_actor_lr:
+            self.actor_lr = new_actor_lr
+        if new_critic_lr:
+            self.critic_lr = new_critic_lr
+        logger.debug('Updated learning rates.')
+
     def update_target_net(self):
         self.sess.run(self.target_soft_updates)
 
@@ -384,16 +391,21 @@ class DDPG(object):
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
 
-    def save_actor_critic(self, prefix = '/tmp/gym/models/', filename='ddpg_actor_critic.ckpt', id=None):
+    def save_actor_critic(self, model_dir = '/tmp/gym/models/', filename='ddpg_actor_critic.ckpt', id=None):
         # Save the actor and critic models to file
-        os.makedirs(prefix, exist_ok=True)
-        f = os.path.join(prefix, str(id) + '_' + filename) 
+        os.makedirs(model_dir, exist_ok=True)
+        f = os.path.join(model_dir, filename) 
         print('Saving model: {}'.format(f))
-        save_path = self.saver.save(self.sess, f)#,  global_step=id, max_to_keep) #filename) #
+        save_path = self.saver.save(self.sess, f, global_step=id)
         logger.warn(' Model saved in path: %s' % save_path)
 
-    def load_actor_critic(self, prefix = '/tmp/gym/models/', filename='ddpg_actor_critic.ckpt', id=None):
-        f = os.path.join(prefix, str(id) + '_' + filename) 
-        print('Loading model: {}'.format(f))
-        self.saver.restore(self.sess, f)
+    def load_actor_critic(self, model_dir = '/tmp/gym/models/', filename='ddpg_actor_critic.ckpt', id=None, latest=False):
+        if not latest:
+            f = os.path.join(model_dir, filename + '-' + str(id)) 
+            print('Loading model: {}'.format(f))
+            self.saver.restore(self.sess, f)
+        else:
+            path = tf.train.latest_checkpoint(model_dir)
+            logger.info('Found model: {}'.format(path))
+            self.saver.restore(self.sess, path)
         logger.warn('Model restored.')

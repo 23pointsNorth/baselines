@@ -15,7 +15,7 @@ from mpi4py import MPI
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50, load_network_id=None):
+    tau=0.01, eval_env=None, param_noise_adaption_interval=50, load_network_id=None, latest=False):
     rank = MPI.COMM_WORLD.Get_rank()
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -48,7 +48,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         agent.reset()
         if (load_network_id):
             agent.load_actor_critic(id=load_network_id)
-            
+        if (latest):
+            agent.load_actor_critic(latest=True)
+
         obs = env.reset()
         if eval_env is not None:
             eval_obs = eval_env.reset()
@@ -143,6 +145,10 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                             eval_episode_rewards.append(eval_episode_reward)
                             eval_episode_rewards_history.append(eval_episode_reward)
                             eval_episode_reward = 0.
+
+            # Update learning rates
+            if (epoch % 5 == 0 and epoch > 0):
+                agent.update_lr(agent.actor_lr*0.65, agent.critic_lr*0.65)
 
             mpi_size = MPI.COMM_WORLD.Get_size()
             # Log stats.

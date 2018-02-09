@@ -100,8 +100,8 @@ def parse_args():
     parser.add_argument('--seed', help='RNG seed', type=int, default=0)
     parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
     parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
-    parser.add_argument('--actor-lr', type=float, default=(1e-4)/100.)
-    parser.add_argument('--critic-lr', type=float, default=(1e-3)/100.)
+    parser.add_argument('--actor-lr', type=float, default=(1e-4)/10.) #Optimially 100
+    parser.add_argument('--critic-lr', type=float, default=(1e-3)/10.) # optimially 100
     boolean_flag(parser, 'popart', default=False)
     parser.add_argument('--gamma', type=float, default=0.1)
     parser.add_argument('--reward-scale', type=float, default=1.)
@@ -115,6 +115,7 @@ def parse_args():
     parser.add_argument('--num-timesteps', type=int, default=None)
     parser.add_argument('--load-network-id', type=int, default=None)
     boolean_flag(parser, 'evaluation', default=False)
+    boolean_flag(parser, 'latest', default=False)
     parser.add_argument('--custom-log-dir', type=str, default='./')
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
