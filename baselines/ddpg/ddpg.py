@@ -46,6 +46,7 @@ def get_target_updates(vars, target_vars, tau):
 
 
 def get_perturbed_actor_updates(actor, perturbed_actor, param_noise_stddev):
+    # logger.info((actor.vars),' \n\n\n\n' ,perturbed_actor.vars)
     assert len(actor.vars) == len(perturbed_actor.vars)
     assert len(actor.perturbable_vars) == len(perturbed_actor.perturbable_vars)
 
@@ -62,7 +63,7 @@ def get_perturbed_actor_updates(actor, perturbed_actor, param_noise_stddev):
 
 
 class DDPG(object):
-    def __init__(self, actor, critic, memory, observation_shape, action_shape, param_noise=None, action_noise=None,
+    def __init__(self, name, actor, critic, memory, observation_shape, action_shape, param_noise=None, action_noise=None,
         gamma=0.99, tau=0.001, normalize_returns=False, enable_popart=False, normalize_observations=True,
         batch_size=128, observation_range=(-5., 5.), action_range=(-1., 1.), return_range=(-np.inf, np.inf),
         adaptive_param_noise=True, adaptive_param_noise_policy_threshold=.1,
@@ -97,10 +98,12 @@ class DDPG(object):
         self.batch_size = batch_size
         self.stats_sample = None
         self.critic_l2_reg = critic_l2_reg
+        self.name = name
 
         # Observation normalization.
         if self.normalize_observations:
-            with tf.variable_scope('obs_rms'):
+            print('Normalize: ' + str(self.normalize_observations))
+            with tf.variable_scope(self.name + 'obs_rms'):
                 self.obs_rms = RunningMeanStd(shape=observation_shape)
         else:
             self.obs_rms = None
@@ -111,17 +114,18 @@ class DDPG(object):
 
         # Return normalization.
         if self.normalize_returns:
-            with tf.variable_scope('ret_rms'):
+            with tf.variable_scope(self.name + 'ret_rms'):
                 self.ret_rms = RunningMeanStd()
         else:
             self.ret_rms = None
 
         # Create target networks.
         target_actor = copy(actor)
-        target_actor.name = 'target_actor'
+        target_actor.name = self.name + 'target_actor' # str(self.actor.name) + 
         self.target_actor = target_actor
+
         target_critic = copy(critic)
-        target_critic.name = 'target_critic'
+        target_critic.name = self.name + 'target_critic' # str(self.critic.name) + 
         self.target_critic = target_critic
 
         # Create networks and core TF parts that are shared across setup parts.
@@ -145,6 +149,7 @@ class DDPG(object):
 
         # Saver
         self.saver = tf.train.Saver(max_to_keep=int(1e2))
+        logger.info('Done in init.')
 
     def setup_target_network_updates(self):
         actor_init_updates, actor_soft_updates = get_target_updates(self.actor.vars, self.target_actor.vars, self.tau)
@@ -157,14 +162,17 @@ class DDPG(object):
 
         # Configure perturbed actor.
         param_noise_actor = copy(self.actor)
-        param_noise_actor.name = 'param_noise_actor'
+        param_noise_actor.name = self.name + 'param_noise_actor' # str(self.actor.name) + 
+        # logger.info('asdadasasd', (self.actor.vars),' \n\n\n\n' ,param_noise_actor.vars)
+
+
         self.perturbed_actor_tf = param_noise_actor(normalized_obs0)
         logger.info('setting up param noise')
         self.perturb_policy_ops = get_perturbed_actor_updates(self.actor, param_noise_actor, self.param_noise_stddev)
 
         # Configure separate copy for stddev adoption.
         adaptive_param_noise_actor = copy(self.actor)
-        adaptive_param_noise_actor.name = 'adaptive_param_noise_actor'
+        adaptive_param_noise_actor.name = self.name + 'adaptive_param_noise_actor' # str(self.actor.name) + 
         adaptive_actor_tf = adaptive_param_noise_actor(normalized_obs0)
         self.perturb_adaptive_policy_ops = get_perturbed_actor_updates(self.actor, adaptive_param_noise_actor, self.param_noise_stddev)
         self.adaptive_policy_distance = tf.sqrt(tf.reduce_mean(tf.square(self.actor_tf - adaptive_actor_tf)))

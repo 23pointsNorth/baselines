@@ -25,7 +25,7 @@ class Actor(Model):
         self.nb_actions = nb_actions
         self.layer_norm = layer_norm
 
-    def __call__(self, obs, reuse=False):
+    def __call__(self, obs, reuse=False): # False
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()
@@ -41,7 +41,10 @@ class Actor(Model):
                 x = tc.layers.layer_norm(x, center=True, scale=True)
             x = tf.nn.relu(x)
             
-            x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
+            if 'salient' in self.name:
+                x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=+3e-3, maxval=6e-3))
+            else:
+                x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             x = tf.nn.tanh(x)
         return x
 
@@ -51,7 +54,7 @@ class Critic(Model):
         super(Critic, self).__init__(name=name)
         self.layer_norm = layer_norm
 
-    def __call__(self, obs, action, reuse=False):
+    def __call__(self, obs, action, reuse=False): # False
         with tf.variable_scope(self.name) as scope:
             if reuse:
                 scope.reuse_variables()

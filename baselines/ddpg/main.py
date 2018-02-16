@@ -19,7 +19,7 @@ import tensorflow as tf
 from mpi4py import MPI
 from datetime import datetime
 
-def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwargs):
+def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, duo, **kwargs):
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
     if rank != 0:
@@ -66,6 +66,15 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwar
     critic = Critic(layer_norm=layer_norm)
     actor = Actor(nb_actions, layer_norm=layer_norm)
 
+    # Salient info
+    from gym import spaces
+    salient_action_space = spaces.Box(low=np.array([0.] * env.observation_space.shape[0]), 
+                                       high=np.array([1.] * env.observation_space.shape[0]))
+    print(salient_action_space, salient_action_space.shape[-1])
+    salient_memory = Memory(limit=int(1e6), action_shape=salient_action_space.shape, observation_shape=env.observation_space.shape)
+    salient_critic = Critic(layer_norm=layer_norm, name='salient_critic')
+    salient_actor = Actor(salient_action_space.shape[-1], layer_norm=layer_norm, name='salient_actor')
+
     # Seed everything to make things reproducible.
     seed = seed + 1000000 * rank
     logger.info('DDPG: rank {}: seed={}, logdir={}'.format(rank, seed, logger.get_dir()))
@@ -78,8 +87,12 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwar
     # Disable logging for rank != 0 to avoid noise.
     if rank == 0:
         start_time = time.time()
-    training.train(env=env, eval_env=eval_env, param_noise=param_noise,
-        action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
+    if duo:
+        training.train_duo(env=env, eval_env=eval_env, param_noise=param_noise, salient_action_space=salient_action_space,
+            action_noise=action_noise, actor=actor, critic=critic, memory=memory, salient_actor=salient_actor, salient_critic=salient_critic, salient_memory=salient_memory, **kwargs)
+    else:
+        training.train(env=env, eval_env=eval_env, param_noise=param_noise,
+                       action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
     env.close()
     if eval_env is not None:
         eval_env.close()
@@ -116,6 +129,7 @@ def parse_args():
     parser.add_argument('--load-network-id', type=int, default=None)
     boolean_flag(parser, 'evaluation', default=False)
     boolean_flag(parser, 'latest', default=False)
+    boolean_flag(parser, 'duo', default=False)
     parser.add_argument('--custom-log-dir', type=str, default='./')
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
