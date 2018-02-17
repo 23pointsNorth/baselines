@@ -26,7 +26,7 @@ class Actor(Model):
         self.layer_norm = layer_norm
 
     def __call__(self, obs, reuse=False): # False
-        with tf.variable_scope(self.name) as scope:
+        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE) as scope:
             if reuse:
                 scope.reuse_variables()
 
@@ -55,7 +55,7 @@ class Critic(Model):
         self.layer_norm = layer_norm
 
     def __call__(self, obs, action, reuse=False): # False
-        with tf.variable_scope(self.name) as scope:
+        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE) as scope:
             if reuse:
                 scope.reuse_variables()
 
