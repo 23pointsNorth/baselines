@@ -12,6 +12,7 @@ import tensorflow as tf
 from mpi4py import MPI
 import math
 
+from datetime import datetime
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
@@ -214,7 +215,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic, salient_actor, salient_critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise, salient_action_space,
     popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, salient_memory,
-    observation_range=(-1, 1), 
+    observation_range=(-1, 1), saving_saliency_episode=20, train_saliency_nn=40,
     tau=0.01, eval_env=None, param_noise_adaption_interval=50, load_network_id=None, latest=False):
     rank = MPI.COMM_WORLD.Get_rank()
 
@@ -238,10 +239,12 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
     salient_agent = DDPG('salient_agent_',salient_actor, salient_critic, salient_memory, env.observation_space.shape, salient_action_space.shape,
         gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
         batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
-        actor_lr=actor_lr/100., critic_lr=critic_lr/100., enable_popart=popart, clip_norm=clip_norm,
+        actor_lr=actor_lr*10., critic_lr=critic_lr*10., enable_popart=popart, clip_norm=clip_norm,
         reward_scale=reward_scale, action_range=[-1, 1], observation_range=observation_range) # lr /10.
     
     logger.info('Starting process...')
+    time_start = datetime.now().strftime("%Y%m%dT%H%M%S")
+
     # logger.info(str(agent.__dict__.items()))
 
     # Set up logging stuff only for a single worker.
@@ -295,10 +298,10 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                 for t_rollout in range(nb_rollout_steps):
                     # Predict next action.
                     sal_action, sal_q = salient_agent.pi(obs, apply_noise=True, compute_Q=True)
-                    print(obs)
-                    print(sal_action)
+                    # print(obs)
+                    logger.info(sal_action)
                     obs = [obs[x] if sal_action[x] >= 0. else -2. for x in range(len(obs))]
-                    print(obs)
+                    logger.info(obs)
                     assert sal_action.shape == salient_action_space.shape
                     action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
                     assert action.shape == env.action_space.shape
@@ -322,11 +325,17 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                         epoch_actions.append(action)
                         epoch_qs.append(q)
                         agent.store_transition(obs, action, r, new_obs, done)
-                        sal_reward = r + (salient_action_space.shape[0] - np.sum(sal_action >= 0)) #*(math.log(t_rollout+1.))
-                        logger.info('Reward: {}, sal r: {}'.format(r, sal_reward))
-                        if epoch_episodes - last_salient_train_epoch > 20:
+                        sal_reward = r + 2.*(np.sum(sal_action < 0)) #*(math.log(t_rollout+1.))
+                        logger.info('Reward: {}, saliency r: {} ({})'.format(r, sal_reward, np.sum(sal_action < 0)))
+                        if epoch_episodes - last_salient_train_epoch >= saving_saliency_episode:
                             print('Saving salient memory!')
                             salient_agent.store_transition(obs, sal_action, sal_reward, new_obs, done)
+                            
+                            logger.debug('Saving action to file...')
+                            recording_path = os.path.join('/tmp', 'gym', 'action_'+time_start)
+                            os.makedirs(recording_path, exist_ok=True)
+                            with open(os.path.join(recording_path, 'actions.csv'), "a") as score_file:
+                                score_file.write(str(sal_action) + '\n')
                         obs = new_obs
 
                     if done:
@@ -352,12 +361,10 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                 epoch_actor_losses2 = []
                 epoch_critic_losses2 = []
                 epoch_adaptive_distances = []
-                update_salient_nn = False
-                if epoch_episodes - last_salient_train_epoch > 200:
-                    last_salient_train_epoch = epoch_episodes
-                    update_salient_nn = True
+                # update_salient_nn = False
 
-                updated_once = False
+
+                # updated_once = False
                 for t_train in range(nb_train_steps):
                     # Adapt param noise, if necessary.
                     if memory.nb_entries >= batch_size and t % param_noise_adaption_interval == 0:
@@ -369,22 +376,33 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                     epoch_critic_losses.append(cl)
                     epoch_actor_losses.append(al)
                     agent.update_target_net()
-                    if (update_salient_nn):
-
-                        logger.info('Updating saliency netowrk and reseting other agent!')
-                        if (not updated_once):
-                            updated_once = True
-                            agent =  DDPG('standart_agent_', actor, critic, memory, env.observation_space.shape, env.action_space.shape,
-                                gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
-                                batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
-                                actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
-                                reward_scale=reward_scale, observation_range=observation_range)
-                            agent.initialize(sess)
-                            agent.update_lr(1e-5, 1e-4)
+                    if (epoch_episodes - last_salient_train_epoch > saving_saliency_episode):
+                        logger.info('Updating saliency netowrk!')
+                        # if (not updated_once):
+                        #     updated_once = True
+                            # agent =  DDPG('standart_agent_', actor, critic, memory, env.observation_space.shape, env.action_space.shape,
+                            #     gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
+                            #     batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
+                            #     actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
+                            #     reward_scale=reward_scale, observation_range=observation_range)
+                            # agent.initialize(sess)
+                            # agent.update_lr(1e-5, 1e-4)
                         cl2, al2 = salient_agent.train()
                         epoch_critic_losses2.append(cl2)
                         epoch_actor_losses2.append(al2)
                         salient_agent.update_target_net()
+
+                if epoch_episodes - last_salient_train_epoch >= train_saliency_nn:
+                    logger.info('Restarting learning agent.')
+                    last_salient_train_epoch = epoch_episodes + 1
+                    agent =  DDPG('standart_agent_', actor, critic, memory, env.observation_space.shape, env.action_space.shape,
+                                gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
+                                batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
+                                actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
+                                reward_scale=reward_scale, observation_range=observation_range)
+                    agent.initialize(sess)
+                    agent.update_lr(1e-5, 1e-4)
+                    # update_salient_nn = True
 
                 # Evaluate.
                 eval_episode_rewards = []
