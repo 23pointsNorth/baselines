@@ -42,7 +42,7 @@ class Actor(Model):
             x = tf.nn.relu(x)
             
             if 'salient' in self.name:
-                x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=+3e-3, maxval=6e-3))
+                x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=+3e-3, maxval=4e-2))
             else:
                 x = tf.layers.dense(x, self.nb_actions, kernel_initializer=tf.random_uniform_initializer(minval=-3e-3, maxval=3e-3))
             x = tf.nn.tanh(x)

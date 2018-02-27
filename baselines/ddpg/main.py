@@ -62,7 +62,7 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, duo, *
             raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
 
     # Configure components.
-    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
+    memory = Memory(limit=int(1e5), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
     critic = Critic(layer_norm=layer_norm)
     actor = Actor(nb_actions, layer_norm=layer_norm)
 
@@ -71,7 +71,7 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, duo, *
     salient_action_space = spaces.Box(low=np.array([0.] * env.observation_space.shape[0]), 
                                        high=np.array([1.] * env.observation_space.shape[0]))
     print(salient_action_space, salient_action_space.shape[-1])
-    salient_memory = Memory(limit=int(1e6), action_shape=salient_action_space.shape, observation_shape=env.observation_space.shape)
+    salient_memory = Memory(limit=int(1e4), action_shape=salient_action_space.shape, observation_shape=env.observation_space.shape)
     salient_critic = Critic(layer_norm=layer_norm, name='salient_critic')
     salient_actor = Actor(salient_action_space.shape[-1], layer_norm=layer_norm, name='salient_actor')
 
@@ -119,7 +119,7 @@ def parse_args():
     parser.add_argument('--gamma', type=float, default=0.1)
     parser.add_argument('--reward-scale', type=float, default=1.)
     parser.add_argument('--clip-norm', type=float, default=None)
-    parser.add_argument('--nb-epochs', type=int, default=50000)  # with default settings, perform 1M steps total
+    parser.add_argument('--nb-epochs', type=int, default=10000)  # with default settings, perform 1M steps total
     parser.add_argument('--nb-epoch-cycles', type=int, default=20)
     parser.add_argument('--nb-train-steps', type=int, default=60)  # per epoch cycle and MPI worker
     parser.add_argument('--nb-eval-steps', type=int, default=00)  # per epoch cycle and MPI worker

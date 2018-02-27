@@ -16,8 +16,8 @@ from datetime import datetime
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
-    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50, load_network_id=None, latest=False):
+    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, load_network_id, latest,
+    tau=0.01, eval_env=None, param_noise_adaption_interval=50):
     rank = MPI.COMM_WORLD.Get_rank()
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -214,9 +214,9 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
 def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic, salient_actor, salient_critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise, salient_action_space,
-    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, salient_memory,
-    observation_range=(-1, 1), saving_saliency_episode=20, train_saliency_nn=40,
-    tau=0.01, eval_env=None, param_noise_adaption_interval=50, load_network_id=None, latest=False):
+    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, salient_memory, load_network_id, latest,
+    observation_range=(-1, 1), saving_saliency_episode=50, train_saliency_nn=100,
+    tau=0.01, eval_env=None, param_noise_adaption_interval=50):
     rank = MPI.COMM_WORLD.Get_rank()
 
     assert (np.abs(env.action_space.low) == env.action_space.high).all()  # we assume symmetric actions.
@@ -239,7 +239,7 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
     salient_agent = DDPG('salient_agent_',salient_actor, salient_critic, salient_memory, env.observation_space.shape, salient_action_space.shape,
         gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
         batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
-        actor_lr=actor_lr*10., critic_lr=critic_lr*10., enable_popart=popart, clip_norm=clip_norm,
+        actor_lr=actor_lr/10., critic_lr=critic_lr/10., enable_popart=popart, clip_norm=clip_norm,
         reward_scale=reward_scale, action_range=[-1, 1], observation_range=observation_range) # lr /10.
     
     logger.info('Starting process...')
@@ -300,7 +300,11 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                     sal_action, sal_q = salient_agent.pi(obs, apply_noise=True, compute_Q=True)
                     # print(obs)
                     logger.info(sal_action)
-                    obs = [obs[x] if sal_action[x] >= 0. else -2. for x in range(len(obs))]
+                    new_obs = [obs[x] if sal_action[x] >= 0.5 else -2. for x in range(len(obs))]
+                    # new_obs[-1] = obs[-1] #### Swap out important stuff to be always there!
+                    obs = new_obs
+                    ############################# 
+                    
                     logger.info(obs)
                     assert sal_action.shape == salient_action_space.shape
                     action, q = agent.pi(obs, apply_noise=True, compute_Q=True)
@@ -325,8 +329,8 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                         epoch_actions.append(action)
                         epoch_qs.append(q)
                         agent.store_transition(obs, action, r, new_obs, done)
-                        sal_reward = r + 2.*(np.sum(sal_action < 0)) #*(math.log(t_rollout+1.))
-                        logger.info('Reward: {}, saliency r: {} ({})'.format(r, sal_reward, np.sum(sal_action < 0)))
+                        sal_reward = r + 1.*(np.sum(sal_action < .50)) #*(math.log(t_rollout+1.))
+                        logger.info('Reward: {}, saliency r: {} ({})'.format(r, sal_reward, np.sum(sal_action < 0.5)))
                         if epoch_episodes - last_salient_train_epoch >= saving_saliency_episode:
                             print('Saving salient memory!')
                             salient_agent.store_transition(obs, sal_action, sal_reward, new_obs, done)
@@ -376,21 +380,21 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                     epoch_critic_losses.append(cl)
                     epoch_actor_losses.append(al)
                     agent.update_target_net()
-                    if (epoch_episodes - last_salient_train_epoch > saving_saliency_episode):
-                        logger.info('Updating saliency netowrk!')
-                        # if (not updated_once):
-                        #     updated_once = True
-                            # agent =  DDPG('standart_agent_', actor, critic, memory, env.observation_space.shape, env.action_space.shape,
-                            #     gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
-                            #     batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
-                            #     actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
-                            #     reward_scale=reward_scale, observation_range=observation_range)
-                            # agent.initialize(sess)
-                            # agent.update_lr(1e-5, 1e-4)
-                        cl2, al2 = salient_agent.train()
-                        epoch_critic_losses2.append(cl2)
-                        epoch_actor_losses2.append(al2)
-                        salient_agent.update_target_net()
+                    # if (epoch_episodes - last_salient_train_epoch > saving_saliency_episode):
+                    #     logger.info('Updating saliency netowrk!')
+                    #     # if (not updated_once):
+                    #     #     updated_once = True
+                    #         # agent =  DDPG('standart_agent_', actor, critic, memory, env.observation_space.shape, env.action_space.shape,
+                    #         #     gamma=gamma, tau=tau, normalize_returns=normalize_returns, normalize_observations=normalize_observations,
+                    #         #     batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
+                    #         #     actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
+                    #         #     reward_scale=reward_scale, observation_range=observation_range)
+                    #         # agent.initialize(sess)
+                    #         # agent.update_lr(1e-5, 1e-4)
+                    #     cl2, al2 = salient_agent.train()
+                    #     epoch_critic_losses2.append(cl2)
+                    #     epoch_actor_losses2.append(al2)
+                    #     salient_agent.update_target_net()
 
                 if epoch_episodes - last_salient_train_epoch >= train_saliency_nn:
                     logger.info('Restarting learning agent.')
@@ -403,6 +407,13 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
                     agent.initialize(sess)
                     agent.update_lr(1e-5, 1e-4)
                     # update_salient_nn = True
+
+                    #### Train salient agent
+                    for t_train in range(nb_train_steps*5):
+                        cl2, al2 = salient_agent.train()
+                        epoch_critic_losses2.append(cl2)
+                        epoch_actor_losses2.append(al2)
+                        salient_agent.update_target_net()
 
                 # Evaluate.
                 eval_episode_rewards = []
@@ -427,7 +438,7 @@ def train_duo(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render
             # Update learning rates
             if (epoch % 10 == 0 and epoch > 0):
                 agent.update_lr(agent.actor_lr*0.65, agent.critic_lr*0.65)
-                salient_agent.update_lr(salient_agent.actor_lr*0.95, salient_agent.critic_lr*0.95)
+                salient_agent.update_lr(salient_agent.actor_lr*0.99, salient_agent.critic_lr*0.99)
 
 
             mpi_size = MPI.COMM_WORLD.Get_size()
