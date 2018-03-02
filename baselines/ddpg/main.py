@@ -103,7 +103,7 @@ def parse_args():
     parser.add_argument('--actor-lr', type=float, default=(1e-4)/10.) #Optimially 100
     parser.add_argument('--critic-lr', type=float, default=(1e-3)/10.) # optimially 100
     boolean_flag(parser, 'popart', default=False)
-    parser.add_argument('--gamma', type=float, default=0.1)
+    parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--reward-scale', type=float, default=1.)
     parser.add_argument('--clip-norm', type=float, default=None)
     parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings, perform 1M steps total
@@ -116,6 +116,7 @@ def parse_args():
     parser.add_argument('--load-network-id', type=int, default=None)
     boolean_flag(parser, 'evaluation', default=False)
     boolean_flag(parser, 'latest', default=False)
+    boolean_flag(parser, 'plot-info', default=False)
     parser.add_argument('--custom-log-dir', type=str, default='./')
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them

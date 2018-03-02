@@ -397,7 +397,7 @@ class DDPG(object):
         f = os.path.join(model_dir, filename) 
         print('Saving model: {}'.format(f))
         save_path = self.saver.save(self.sess, f, global_step=id)
-        logger.warn(' Model saved in path: %s' % save_path)
+        logger.warn('Model saved in path: %s' % save_path)
 
     def load_actor_critic(self, model_dir = '/tmp/gym/models/', filename='ddpg_actor_critic.ckpt', id=None, latest=False):
         if not latest:

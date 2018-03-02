@@ -11,10 +11,14 @@ import numpy as np
 import tensorflow as tf
 from mpi4py import MPI
 
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+
 
 def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, param_noise, actor, critic,
     normalize_returns, normalize_observations, critic_l2_reg, actor_lr, critic_lr, action_noise,
-    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, load_network_id, latest,
+    popart, gamma, clip_norm, nb_train_steps, nb_rollout_steps, nb_eval_steps, batch_size, memory, 
+    load_network_id, latest, plot_info,
     tau=0.01, eval_env=None, param_noise_adaption_interval=50):
     rank = MPI.COMM_WORLD.Get_rank()
 
@@ -63,6 +67,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         epoch = 0
         start_time = time.time()
 
+        epoch_episode_distances2target = []
+        epoch_episode_relative_alt = []
         epoch_episode_rewards = []
         epoch_episode_steps = []
         epoch_episode_eval_rewards = []
@@ -102,6 +108,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                         epoch_episode_rewards.append(episode_reward)
                         episode_rewards_history.append(episode_reward)
                         epoch_episode_steps.append(episode_step)
+                        epoch_episode_distances2target.append(info['dist2target'])
+                        epoch_episode_relative_alt.append(info['relative_alt'])
                         episode_reward = 0.
                         episode_step = 0
                         epoch_episodes += 1
@@ -109,6 +117,13 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
 
                         if (episodes % 10 == 0):
                             agent.save_actor_critic(id=episodes)
+
+                        if (episodes % 2 == 0 and plot_info):
+                            plot_information(
+                                      epoch_episode_distances2target, 
+                                      epoch_episode_rewards, 
+                                      epoch_episode_relative_alt)
+                            plt.pause(0.1)
                         agent.reset()
                         obs = env.reset()
 
@@ -205,4 +220,69 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                 if eval_env and hasattr(eval_env, 'get_state'):
                     with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
                         pickle.dump(eval_env.get_state(), f)
+
+def plot_information(dist, reward, alt):
+    # Plot distance to target
+    fig = plt.figure(1)
+    ax1 = fig.add_subplot(311)
+    count = len(dist)
+
+    ax1.set_title('Distances to target at end of trajectory')    
+    ax1.set_xlabel('Trajectory count')
+    ax1.set_ylabel('Distance (m)')
+    plt.grid(linestyle='-')
+    plt.tight_layout()
+    plt.xlim(xmin=0, xmax=len(dist))
+    plt.ylim(ymin=0, ymax=max(dist))
+    ax = fig.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Plot horizontal line
+    plt.axhline(y=17243.39, color='k', linewidth=2, alpha=0.5, label='Distance from home (17243m.)' if count <= 2 else '_nolabel_')
+    plt.axhline(y=500., color='m', linewidth=2, alpha=0.5, label='Eps distance (500m.)' if count <= 2 else '_nolabel_')
+
+    # Plot distances
+    ax1.plot(dist, c='r', label='Distance (m)' if count <= 2 else '_nolabel_')
+    leg = ax1.legend()
+
+    # Plot rewards
+    fig = plt.figure(1)
+    ax1 = fig.add_subplot(312)
+
+    ax1.set_title('Reward for a complete trajectory')    
+    ax1.set_xlabel('Trajectory count')
+    ax1.set_ylabel('Reward')
+    plt.grid(linestyle='-')
+    plt.tight_layout()
+    plt.xlim(xmin=0, xmax=len(reward))
+    plt.ylim(ymin=min(reward), ymax=max(reward))
+    ax = fig.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Plot rewards
+    ax1.plot(reward, c='b', label='Reward' if count <= 2 else '_nolabel_')
+    leg = ax1.legend()
+
+
+    # Plot height
+    fig = plt.figure(1)
+    ax1 = fig.add_subplot(313)
+
+    ax1.set_title('Height above terrain')    
+    ax1.set_xlabel('Trajectory count')
+    ax1.set_ylabel('Height (m)')
+    plt.grid(linestyle='-')
+    plt.tight_layout()
+    plt.xlim(xmin=0, xmax=len(alt))
+    plt.ylim(ymin=0, ymax=max(alt))
+    ax = fig.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Plot horizontal line
+    plt.axhline(y=600., color='k', linewidth=2, alpha=0.5, label='Target height (600m.)' if count <= 2 else '_nolabel_')
+    plt.axhline(y=50., color='m', linewidth=2, alpha=0.5, label='Minimum height (60m.)' if count <= 2 else '_nolabel_')
+
+    # Plot distances
+    ax1.plot(alt, c='r', label='Height (m)' if count <= 2 else '_nolabel_')
+    leg = ax1.legend()
 
