@@ -30,15 +30,6 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
         batch_size=batch_size, action_noise=action_noise, param_noise=param_noise, critic_l2_reg=critic_l2_reg,
         actor_lr=actor_lr, critic_lr=critic_lr, enable_popart=popart, clip_norm=clip_norm,
         reward_scale=reward_scale)
-    
-    # logger.info('Using agent with the following configuration:')
-    # logger.info(str(agent.__dict__.items()))
-
-    # Set up logging stuff only for a single worker.
-    if rank == 0:
-        saver = tf.train.Saver()
-    else:
-        saver = None
 
     step = 0
     episode = 0
@@ -103,7 +94,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                     obs = new_obs
 
                     if done:
-                        logger.warn('EPISODE OVER!')
+                        logger.info('EPISODE OVER!')
                         # Episode done.
                         epoch_episode_rewards.append(episode_reward)
                         episode_rewards_history.append(episode_reward)
@@ -124,6 +115,7 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
                                       epoch_episode_rewards, 
                                       epoch_episode_relative_alt)
                             plt.pause(0.1)
+                            
                         agent.reset()
                         obs = env.reset()
 
@@ -165,61 +157,8 @@ def train(env, nb_epochs, nb_epoch_cycles, render_eval, reward_scale, render, pa
             if (epoch % 5 == 0 and epoch > 0):
                 agent.update_lr(agent.actor_lr*0.65, agent.critic_lr*0.65)
 
-            mpi_size = MPI.COMM_WORLD.Get_size()
-            # Log stats.
-            # XXX shouldn't call np.mean on variable length lists
-            duration = time.time() - start_time
-            stats = agent.get_stats()
-            combined_stats = stats.copy()
-            combined_stats['rollout/return'] = np.mean(epoch_episode_rewards)
-            combined_stats['rollout/return_history'] = np.mean(episode_rewards_history)
-            combined_stats['rollout/episode_steps'] = np.mean(epoch_episode_steps)
-            combined_stats['rollout/actions_mean'] = np.mean(epoch_actions)
-            combined_stats['rollout/Q_mean'] = np.mean(epoch_qs)
-            combined_stats['train/loss_actor'] = np.mean(epoch_actor_losses)
-            combined_stats['train/loss_critic'] = np.mean(epoch_critic_losses)
-            combined_stats['train/param_noise_distance'] = np.mean(epoch_adaptive_distances)
-            combined_stats['total/duration'] = duration
-            combined_stats['total/steps_per_second'] = float(t) / float(duration)
-            combined_stats['total/episodes'] = episodes
-            combined_stats['rollout/episodes'] = epoch_episodes
-            combined_stats['rollout/actions_std'] = np.std(epoch_actions)
-            # Evaluation statistics.
-            if eval_env is not None:
-                combined_stats['eval/return'] = eval_episode_rewards
-                combined_stats['eval/return_history'] = np.mean(eval_episode_rewards_history)
-                combined_stats['eval/Q'] = eval_qs
-                combined_stats['eval/episodes'] = len(eval_episode_rewards)
-            def as_scalar(x):
-                if isinstance(x, np.ndarray):
-                    assert x.size == 1
-                    return x[0]
-                elif np.isscalar(x):
-                    return x
-                else:
-                    raise ValueError('expected scalar, got %s'%x)
-            combined_stats_sums = MPI.COMM_WORLD.allreduce(np.array([as_scalar(x) for x in combined_stats.values()]))
-            combined_stats = {k : v / mpi_size for (k,v) in zip(combined_stats.keys(), combined_stats_sums)}
+    logger.info('Finished training')
 
-            # Total statistics.
-            combined_stats['total/epochs'] = epoch + 1
-            combined_stats['total/steps'] = t
-
-            logger.info('----------------------------------------')
-            logger.info(combined_stats)
-            
-            for key in sorted(combined_stats.keys()):
-                logger.record_tabular(key, combined_stats[key])
-            logger.dump_tabular()
-            logger.info('')
-            logdir = logger.get_dir()
-            if rank == 0 and logdir:
-                if hasattr(env, 'get_state'):
-                    with open(os.path.join(logdir, 'env_state.pkl'), 'wb') as f:
-                        pickle.dump(env.get_state(), f)
-                if eval_env and hasattr(eval_env, 'get_state'):
-                    with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as f:
-                        pickle.dump(eval_env.get_state(), f)
 
 def plot_information(dist, reward, alt):
     # Plot distance to target
@@ -247,11 +186,11 @@ def plot_information(dist, reward, alt):
 
     # Plot rewards
     fig = plt.figure(1)
-    ax1 = fig.add_subplot(312)
+    ax2 = fig.add_subplot(312)
 
-    ax1.set_title('Reward for a complete trajectory')    
-    ax1.set_xlabel('Trajectory count')
-    ax1.set_ylabel('Reward')
+    ax2.set_title('Reward for a complete trajectory')    
+    ax2.set_xlabel('Trajectory count')
+    ax2.set_ylabel('Reward')
     plt.grid(linestyle='-')
     plt.tight_layout()
     plt.xlim(xmin=0, xmax=len(reward))
@@ -260,17 +199,17 @@ def plot_information(dist, reward, alt):
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Plot rewards
-    ax1.plot(reward, c='b', label='Reward' if count <= 2 else '_nolabel_')
-    leg = ax1.legend()
+    ax2.plot(reward, c='b', label='Reward' if count <= 2 else '_nolabel_')
+    leg = ax2.legend()
 
 
     # Plot height
     fig = plt.figure(1)
-    ax1 = fig.add_subplot(313)
+    ax3 = fig.add_subplot(313)
 
-    ax1.set_title('Height above terrain')    
-    ax1.set_xlabel('Trajectory count')
-    ax1.set_ylabel('Height (m)')
+    ax3.set_title('Height above terrain')    
+    ax3.set_xlabel('Trajectory count')
+    ax3.set_ylabel('Height (m)')
     plt.grid(linestyle='-')
     plt.tight_layout()
     plt.xlim(xmin=0, xmax=len(alt))
@@ -283,6 +222,6 @@ def plot_information(dist, reward, alt):
     plt.axhline(y=50., color='m', linewidth=2, alpha=0.5, label='Minimum height (60m.)' if count <= 2 else '_nolabel_')
 
     # Plot distances
-    ax1.plot(alt, c='r', label='Height (m)' if count <= 2 else '_nolabel_')
-    leg = ax1.legend()
+    ax3.plot(alt, c='r', label='Height (m)' if count <= 2 else '_nolabel_')
+    leg = ax3.legend()
 

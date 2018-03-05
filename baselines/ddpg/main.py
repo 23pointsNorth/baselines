@@ -25,18 +25,23 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwar
     if rank != 0:
         logger.set_level(logger.DISABLED)
 
-    recording_path = os.path.join(custom_log_dir, env_id, datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-    os.makedirs(recording_path)
+    train_recording_path = os.path.join(custom_log_dir, env_id, 'train', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+    os.makedirs(train_recording_path)
     
     # Create envs.
     env = gym.make(env_id)
-    env = TraceRecordingWrapper(env, directory=recording_path, buffer_batch_size=10)
-    print('TraceRecordingWrapper dir: {}'.format(env.directory))
-    env = bench.Monitor(env, os.path.join(recording_path, 'log'))
+    env = TraceRecordingWrapper(env, directory=train_recording_path, buffer_batch_size=10)
+    logger.info('TraceRecordingWrapper dir: {}'.format(env.directory))
+    # env = bench.Monitor(env, os.path.join(train_recording_path, 'log'))
 
     if evaluation and rank==0:
+        eval_recording_path = os.path.join(custom_log_dir, env_id, 'eval', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+        os.makedirs(eval_recording_path)
+        
         eval_env = gym.make(env_id)
-        eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
+        eval_env = TraceRecordingWrapper(env, directory=eval_recording_path, buffer_batch_size=10)
+        logger.info('TraceRecordingWrapper eval dir: {}'.format(eval_env.directory))
+        # eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
         # env = bench.Monitor(env, None)
     else:
         eval_env = None
@@ -103,7 +108,7 @@ def parse_args():
     parser.add_argument('--actor-lr', type=float, default=(1e-4)/10.) #Optimially 100
     parser.add_argument('--critic-lr', type=float, default=(1e-3)/10.) # optimially 100
     boolean_flag(parser, 'popart', default=False)
-    parser.add_argument('--gamma', type=float, default=0.9)
+    parser.add_argument('--gamma', type=float, default=0.0)
     parser.add_argument('--reward-scale', type=float, default=1.)
     parser.add_argument('--clip-norm', type=float, default=None)
     parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings, perform 1M steps total
