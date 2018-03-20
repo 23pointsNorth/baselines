@@ -39,7 +39,7 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwar
         os.makedirs(eval_recording_path)
         
         eval_env = gym.make(env_id)
-        eval_env = TraceRecordingWrapper(env, directory=eval_recording_path, buffer_batch_size=10)
+        eval_env = TraceRecordingWrapper(eval_env, directory=eval_recording_path, buffer_batch_size=10)
         logger.info('TraceRecordingWrapper eval dir: {}'.format(eval_env.directory))
         # eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
         # env = bench.Monitor(env, None)
@@ -113,8 +113,8 @@ def parse_args():
     parser.add_argument('--clip-norm', type=float, default=None)
     parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings, perform 1M steps total
     parser.add_argument('--nb-epoch-cycles', type=int, default=20)
-    parser.add_argument('--nb-train-steps', type=int, default=60)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-eval-steps', type=int, default=00)  # per epoch cycle and MPI worker
+    parser.add_argument('--nb-train-steps', type=int, default=200)  # per epoch cycle and MPI worker
+    parser.add_argument('--nb-eval-steps', type=int, default=200)  # per epoch cycle and MPI worker
     parser.add_argument('--nb-rollout-steps', type=int, default=20)  # per epoch cycle and MPI worker
     parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--num-timesteps', type=int, default=None)
