@@ -30,8 +30,11 @@ class QLearn:
         oldv = self.q.get((state, action), None)
         if oldv is None:
             self.q[(state, action)] = reward
+            #print("New state. Copying reward")
         else:
-            self.q[(state, action)] = oldv + self.alpha * (value - oldv)
+            #self.q[(state, action)] = oldv + self.alpha * (value - oldv)
+            self.q[(state, action)] = (1. - self.alpha) * self.q[(state, action)] + self.alpha * (value)
+            #print("Visited state. Calculating Qfunction. Value (reward + gamma*maxqnew): {}".format(value))
 
     def chooseAction(self, state, return_q=False):
         q = [self.getQ(state, a) for a in self.actions]
@@ -39,30 +42,48 @@ class QLearn:
 
         if random.random() < self.epsilon:
             #print("choosing randomly")
-            minQ = min(q); mag = max(abs(minQ), abs(maxQ))
-            # add random values to all the actions, recalculate maxQ
-            q = [q[i] + random.random() * mag - .5 * mag for i in range(len(self.actions))]
-            maxQ = max(q)
-
-        count = q.count(maxQ)
-        # In case there're several state-action max values
-        # we select a random one among them
-        if count > 1:
-            best = [i for i in range(len(self.actions)) if q[i] == maxQ]
-            i = random.choice(best)
+            #print(self.actions)
+            i = random.choice(self.actions)
+            #print("random action: {}".format(i))
+            #minQ = min(q); mag = max(abs(minQ), abs(maxQ))
+            ## add random values to all the actions, recalculate maxQ
+            #q = [q[i] + random.random() * mag - .5 * mag for i in range(len(self.actions))]
+            #maxQ = max(q)
         else:
-            i = q.index(maxQ)
+          count = q.count(maxQ)
+          # In case there're several state-action max values
+          # we select a random one among them
+          if count > 1:
+              best = [i for i in range(len(self.actions)) if q[i] == maxQ]
+              #print("More than one action to choose from:")
+              #print(best)
+              i = random.choice(best)
+          else:
+              i = q.index(maxQ)
 
         action = self.actions[i]
-        #print("Action: {}, i: {}".format(action, i))
+        #print("QLearning Action, state: {}, {}".format(action, state))
         #print(q)
         if return_q: # if they want it, give it!
             return action, q
         return action
 
     def learn(self, state1, action1, reward, state2):
+
+        print("\nQLearning Learning Action: {}, state1: {}, reward: {}, state2: {}".format(action1, state1, reward, state2))
+        _q = [self.getQ(state1, a) for a in self.actions]
+        print("q function on state1 prior leaerning")
+        print(_q)
+        m_q2 = [self.getQ(state2, a) for a in self.actions]
+        print("q function on next state")
+        print(m_q2)
+       
         maxqnew = max([self.getQ(state2, a) for a in self.actions])
         self.learnQ(state1, action1, reward, reward + self.gamma*maxqnew)
+       
+        print("q function on state1 after leaerning")
+        _q = [self.getQ(state1, a) for a in self.actions]
+        print(_q)
 
 def build_state(features):
     return int("".join(map(lambda feature: str(int(feature)), features)))

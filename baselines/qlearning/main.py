@@ -189,10 +189,11 @@ if __name__ == '__main__':
         for t in range(max_number_of_steps):
           if t > 1: # to have previous step reading
             if t % 10 == 0:
-              print("step: {}/{}, Reward: {}".format(t, max_number_of_steps, reward))
+              print("step: {}/{}, Local Reward: {}".format(t, max_number_of_steps, reward))
             # env.render()
 
             # Pick an action based on the current state
+            #print(state)
             action = qlearn.chooseAction(state)
             # Execute the action and get feedback
             observation, reward, done, info = env.step(action)
@@ -228,8 +229,8 @@ if __name__ == '__main__':
                 break
 
     #l = last_time_steps_reward.tolist()
-    print("Rewards of last_time_steps")
-    print(last_time_steps_reward)
+    #print("Rewards of last_time_steps")
+    #print(last_time_steps_reward)
     #print(l.sort())
     #logger.info("Overall score: {:0.2f}".format(last_time_steps.mean()))
     #logger.info("Best 100 score: {:0.2f}".format(reduce(lambda x, y: x + y, l[-100:]) / len(l[-100:])))
