@@ -70,20 +70,20 @@ class QLearn:
 
     def learn(self, state1, action1, reward, state2):
 
-        print("\nQLearning Learning Action: {}, state1: {}, reward: {}, state2: {}".format(action1, state1, reward, state2))
-        _q = [self.getQ(state1, a) for a in self.actions]
-        print("q function on state1 prior leaerning")
-        print(_q)
-        m_q2 = [self.getQ(state2, a) for a in self.actions]
-        print("q function on next state")
-        print(m_q2)
+        #print("\nQLearning Learning Action: {}, state1: {}, reward: {}, state2: {}".format(action1, state1, reward, state2))
+        #_q = [self.getQ(state1, a) for a in self.actions]
+        #print("q function on state1 prior leaerning")
+        #print(_q)
+        #m_q2 = [self.getQ(state2, a) for a in self.actions]
+        #print("q function on next state")
+        #print(m_q2)
        
         maxqnew = max([self.getQ(state2, a) for a in self.actions])
         self.learnQ(state1, action1, reward, reward + self.gamma*maxqnew)
        
-        print("q function on state1 after leaerning")
-        _q = [self.getQ(state1, a) for a in self.actions]
-        print(_q)
+        #print("q function on state1 after leaerning")
+        #_q = [self.getQ(state1, a) for a in self.actions]
+        #print(_q)
 
 def build_state(features):
     return int("".join(map(lambda feature: str(int(feature)), features)))

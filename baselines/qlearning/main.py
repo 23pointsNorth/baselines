@@ -27,7 +27,7 @@ def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwar
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
     if rank != 0:
-        logger.set_level(logger.DISABLED)
+        logger.set_level(logger.DEBUG)
 
     train_recording_path = os.path.join(custom_log_dir, env_id, 'train', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
     os.makedirs(train_recording_path)
@@ -148,7 +148,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     env = gym.make(args['env_id'])
-    logger.set_level(logger.INFO)
+    logger.set_level(logger.DEBUG)
 
     #env = gym.wrappers.Monitor(env, '/tmp/cartpole-experiment-1', force=True)
         # video_callable=lambda count: count % 10 == 0)
