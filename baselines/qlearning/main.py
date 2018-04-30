@@ -21,13 +21,14 @@ from datetime import datetime
 import numpy as np
 from baselines.qlearning import qlearning
 from qlearning import build_state
+import pickle
 #from functools import reduce
 
 def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwargs):
     # Configure things.
     rank = MPI.COMM_WORLD.Get_rank()
     if rank != 0:
-        logger.set_level(logger.DEBUG)
+        logger.set_level(logger.INFO)
 
     train_recording_path = os.path.join(custom_log_dir, env_id, 'train', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
     os.makedirs(train_recording_path)
@@ -126,6 +127,9 @@ def parse_args():
     boolean_flag(parser, 'latest', default=False)
     boolean_flag(parser, 'plot-info', default=False)
     parser.add_argument('--custom-log-dir', type=str, default='./')
+    parser.add_argument('--qfunction', type=str, default = None)
+    boolean_flag(parser, 'learning', default=True)
+    parser.add_argument('--epsilon', type=float, default = .1)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
     # they agree with the other parameters
@@ -148,13 +152,13 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     env = gym.make(args['env_id'])
-    logger.set_level(logger.DEBUG)
+    logger.set_level(logger.INFO)
 
     #env = gym.wrappers.Monitor(env, '/tmp/cartpole-experiment-1', force=True)
         # video_callable=lambda count: count % 10 == 0)
 
     #goal_average_steps = 255
-    max_number_of_steps = 1000
+    max_number_of_steps = 10000
     number_of_episodes = 1000
     last_time_steps_reward = np.ndarray(0)
 
@@ -171,9 +175,18 @@ if __name__ == '__main__':
     #cart_velocity_bins = pandas.cut([-1, 1], bins=n_bins, retbins=True)[1][1:-1]
     #angle_rate_bins = pandas.cut([-3.5, 3.5], bins=n_bins_angle, retbins=True)[1][1:-1]
 
+    # File to store que Q function
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    fileName = "./q_functions/" + timestr + ".qf"
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
-                    alpha=0.5, gamma=0.90, epsilon=0.1)
+                    alpha=0.5, gamma=0.90, epsilon = args['epsilon'])
+    #Loads Q function
+    if args['qfunction'] != None:
+      with open(args['qfunction'], "rb") as fp:   # Unpickling
+        qlearn.q = pickle.load(fp)
+        fp.close()
+
     for i_episode in range(number_of_episodes):
         observation = env.reset()
         reward = 0
@@ -185,12 +198,19 @@ if __name__ == '__main__':
                          #to_bin(pole_angle, pole_angle_bins),
                          #to_bin(cart_velocity, cart_velocity_bins),
                          #to_bin(angle_rate_of_change, angle_rate_bins)])
+        if args['learning']:
+          os.makedirs(os.path.dirname(fileName), exist_ok=True)
+          with open(fileName, "wb") as fp:   #Pickling
+            logger.info('Saving Q function to file: {}'.format(fileName))
+            pickle.dump(qlearn.q, fp)
+            fp.close()
 
         for t in range(max_number_of_steps):
           if t > 1: # to have previous step reading
             if t % 10 == 0:
               print("step: {}/{}, Local Reward: {}".format(t, max_number_of_steps, reward))
             # env.render()
+            #print(qlearn.q)
 
             # Pick an action based on the current state
             #print(state)
@@ -219,12 +239,14 @@ if __name__ == '__main__':
               done = True
 
             if not(done):
-                qlearn.learn(state, action, reward, nextState)
+                if args['learning']:
+                  qlearn.learn(state, action, reward, nextState)
                 state = nextState
             else:
                 # Q-learn stuff
                 #reward = -1000 ## reward alway given by env, env when dead
-                qlearn.learn(state, action, reward, nextState)
+                if args['learning']:
+                  qlearn.learn(state, action, reward, nextState)
                 last_time_steps_reward = np.append(last_time_steps_reward, [reward])
                 break
 
