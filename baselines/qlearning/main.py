@@ -24,77 +24,77 @@ from qlearning import build_state
 import pickle
 #from functools import reduce
 
-def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwargs):
-    # Configure things.
-    rank = MPI.COMM_WORLD.Get_rank()
-    if rank != 0:
-        logger.set_level(logger.INFO)
+#def run(env_id, seed, noise_type, layer_norm, evaluation, custom_log_dir, **kwargs):
+    ## Configure things.
+    #rank = MPI.COMM_WORLD.Get_rank()
+    #if rank != 0:
+        #logger.set_level(logger.INFO)
 
-    train_recording_path = os.path.join(custom_log_dir, env_id, 'train', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-    os.makedirs(train_recording_path)
+    #train_recording_path = os.path.join(custom_log_dir, env_id, 'train', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+    #os.makedirs(train_recording_path)
     
-    # Create envs.
-    env = gym.make(env_id)
-    env = TraceRecordingWrapper(env, directory=train_recording_path, buffer_batch_size=10)
-    logger.info('TraceRecordingWrapper dir: {}'.format(env.directory))
-    # env = bench.Monitor(env, os.path.join(train_recording_path, 'log'))
+    ## Create envs.
+    #env = gym.make(env_id)
+    #env = TraceRecordingWrapper(env, directory=train_recording_path, buffer_batch_size=10)
+    #logger.info('TraceRecordingWrapper dir: {}'.format(env.directory))
+    ## env = bench.Monitor(env, os.path.join(train_recording_path, 'log'))
 
-    if evaluation and rank==0:
-        eval_recording_path = os.path.join(custom_log_dir, env_id, 'eval', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-        os.makedirs(eval_recording_path)
+    #if evaluation and rank==0:
+        #eval_recording_path = os.path.join(custom_log_dir, env_id, 'eval', datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+        #os.makedirs(eval_recording_path)
         
-        eval_env = gym.make(env_id)
-        eval_env = TraceRecordingWrapper(eval_env, directory=eval_recording_path, buffer_batch_size=10)
-        logger.info('TraceRecordingWrapper eval dir: {}'.format(eval_env.directory))
-        # eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
-        # env = bench.Monitor(env, None)
-    else:
-        eval_env = None
+        #eval_env = gym.make(env_id)
+        #eval_env = TraceRecordingWrapper(eval_env, directory=eval_recording_path, buffer_batch_size=10)
+        #logger.info('TraceRecordingWrapper eval dir: {}'.format(eval_env.directory))
+        ## eval_env = bench.Monitor(eval_env, os.path.join(logger.get_dir(), 'gym_eval'))
+        ## env = bench.Monitor(env, None)
+    #else:
+        #eval_env = None
 
-    # Parse noise_type
-    action_noise = None
-    param_noise = None
-    nb_actions = env.action_space.shape[-1]
-    for current_noise_type in noise_type.split(','):
-        current_noise_type = current_noise_type.strip()
-        if current_noise_type == 'none':
-            pass
-        elif 'adaptive-param' in current_noise_type:
-            _, stddev = current_noise_type.split('_')
-            param_noise = AdaptiveParamNoiseSpec(initial_stddev=float(stddev), desired_action_stddev=float(stddev))
-        elif 'normal' in current_noise_type:
-            _, stddev = current_noise_type.split('_')
-            action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
-        elif 'ou' in current_noise_type:
-            _, stddev = current_noise_type.split('_')
-            action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
-        else:
-            raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
+    ## Parse noise_type
+    #action_noise = None
+    #param_noise = None
+    #nb_actions = env.action_space.shape[-1]
+    #for current_noise_type in noise_type.split(','):
+        #current_noise_type = current_noise_type.strip()
+        #if current_noise_type == 'none':
+            #pass
+        #elif 'adaptive-param' in current_noise_type:
+            #_, stddev = current_noise_type.split('_')
+            #param_noise = AdaptiveParamNoiseSpec(initial_stddev=float(stddev), desired_action_stddev=float(stddev))
+        #elif 'normal' in current_noise_type:
+            #_, stddev = current_noise_type.split('_')
+            #action_noise = NormalActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
+        #elif 'ou' in current_noise_type:
+            #_, stddev = current_noise_type.split('_')
+            #action_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(nb_actions), sigma=float(stddev) * np.ones(nb_actions))
+        #else:
+            #raise RuntimeError('unknown noise type "{}"'.format(current_noise_type))
 
-    # Configure components.
-    memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
-    critic = Critic(layer_norm=layer_norm)
-    actor = Actor(nb_actions, layer_norm=layer_norm)
+    ## Configure components.
+    #memory = Memory(limit=int(1e6), action_shape=env.action_space.shape, observation_shape=env.observation_space.shape)
+    #critic = Critic(layer_norm=layer_norm)
+    #actor = Actor(nb_actions, layer_norm=layer_norm)
 
-    # Seed everything to make things reproducible.
-    seed = seed + 1000000 * rank
-    logger.info('DDPG: rank {}: seed={}, logdir={}'.format(rank, seed, logger.get_dir()))
-    tf.reset_default_graph()
-    set_global_seeds(seed)
-    env.seed(seed)
-    if eval_env is not None:
-        eval_env.seed(seed)
+    ## Seed everything to make things reproducible.
+    #seed = seed + 1000000 * rank
+    #logger.info('DDPG: rank {}: seed={}, logdir={}'.format(rank, seed, logger.get_dir()))
+    #tf.reset_default_graph()
+    #set_global_seeds(seed)
+    #env.seed(seed)
+    #if eval_env is not None:
+        #eval_env.seed(seed)
 
-    # Disable logging for rank != 0 to avoid noise.
-    if rank == 0:
-        start_time = time.time()
-    training.train(env=env, eval_env=eval_env, param_noise=param_noise,
-        action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
-    env.close()
-    if eval_env is not None:
-        eval_env.close()
-    if rank == 0:
-        logger.info('total runtime: {}s'.format(time.time() - start_time))
+    ## Disable logging for rank != 0 to avoid noise.
+    #if rank == 0:
+        #start_time = time.time()
+    #training.train(env=env, eval_env=eval_env, param_noise=param_noise,
+        #action_noise=action_noise, actor=actor, critic=critic, memory=memory, **kwargs)
+    #env.close()
+    #if eval_env is not None:
+        #eval_env.close()
+    #if rank == 0:
+        #logger.info('total runtime: {}s'.format(time.time() - start_time))
 
 
 def parse_args():
@@ -129,7 +129,7 @@ def parse_args():
     parser.add_argument('--custom-log-dir', type=str, default='./')
     parser.add_argument('--qfunction', type=str, default = None)
     boolean_flag(parser, 'learning', default=True)
-    parser.add_argument('--epsilon', type=float, default = .1)
+    parser.add_argument('--epsilon', type=float, default = .3)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
     # they agree with the other parameters
@@ -153,7 +153,6 @@ if __name__ == '__main__':
     args = parse_args()
     env = gym.make(args['env_id'])
     logger.set_level(logger.INFO)
-
     #env = gym.wrappers.Monitor(env, '/tmp/cartpole-experiment-1', force=True)
         # video_callable=lambda count: count % 10 == 0)
 
@@ -180,7 +179,7 @@ if __name__ == '__main__':
     fileName = "./q_functions/" + timestr + ".qf"
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
-                    alpha=0.5, gamma=0.90, epsilon = args['epsilon'])
+                    alpha=0.4, gamma=0.80, epsilon = args['epsilon'])
     #Loads Q function
     if args['qfunction'] != None:
       with open(args['qfunction'], "rb") as fp:   # Unpickling
@@ -220,20 +219,6 @@ if __name__ == '__main__':
             nextState = build_state(observation)
             #print(observation)
             #print(nextState)
-
-            # Digitize the observation to get a state
-            #cart_position, pole_angle, cart_velocity, angle_rate_of_change = observation
-            #nextState = build_state([to_bin(cart_position, cart_position_bins),
-                             #to_bin(pole_angle, pole_angle_bins),
-                             #to_bin(cart_velocity, cart_velocity_bins),
-                             #to_bin(angle_rate_of_change, angle_rate_bins)])
-
-            # # If out of bounds
-            # if (cart_position > 2.4 or cart_position < -2.4):
-            #     reward = -200
-            #     qlearn.learn(state, action, reward, nextState)
-            #     print("Out of bounds, reseting")
-            #     break
             
             if not(done) and t == max_number_of_steps - 1:
               done = True
@@ -248,7 +233,15 @@ if __name__ == '__main__':
                 if args['learning']:
                   qlearn.learn(state, action, reward, nextState)
                 last_time_steps_reward = np.append(last_time_steps_reward, [reward])
-                break
+                t = max_number_of_steps - 1
+            # Change of Context
+            if info['change_of_context']:
+              qlearn.actions = range(info['new_context_n_actions'])
+              state = build_state(info['obs_context_change'])
+
+            if done:
+              break # TODO: get rid of all breaks
+
 
     #l = last_time_steps_reward.tolist()
     #print("Rewards of last_time_steps")
