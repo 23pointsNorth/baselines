@@ -207,7 +207,8 @@ if __name__ == '__main__':
         for t in range(max_number_of_steps):
           if t > 1: # to have previous step reading
             if t % 10 == 0:
-              print("step: {}/{}, Local Reward: {}".format(t, max_number_of_steps, reward))
+              #print("step: {}/{}, Local Reward: {}".format(t, max_number_of_steps, reward))
+              print("step: {}/{}".format(t, max_number_of_steps))
             # env.render()
             #print(qlearn.q)
 
