@@ -186,6 +186,8 @@ if __name__ == '__main__':
         qlearn.q = pickle.load(fp)
         fp.close()
 
+    episode_trace = []
+
     for i_episode in range(number_of_episodes):
         observation = env.reset()
         reward = 0
@@ -218,6 +220,9 @@ if __name__ == '__main__':
             # Execute the action and get feedback
             observation, reward, done, info = env.step(action)
             nextState = build_state(observation)
+            #print(info)
+            episode_trace.append([info['self_state']['lon'], info['self_state']['lat'], info['self_state']['alt']])
+
             #print(observation)
             #print(nextState)
             
@@ -243,6 +248,14 @@ if __name__ == '__main__':
             if done:
               break # TODO: get rid of all breaks
 
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        file_trace = "./traces/" + timestr + ".csv"
+        os.makedirs(os.path.dirname(file_trace), exist_ok=True)
+        trace_file = open(file_trace, 'w')
+        logger.info('Saving trace of episode in: {}'.format(file_trace))
+        for item in episode_trace:
+            trace_file.write("{}, {}, {}\n".format(item[0], item[1], item[2]))
+        del episode_trace[:]
 
     #l = last_time_steps_reward.tolist()
     #print("Rewards of last_time_steps")
