@@ -66,110 +66,78 @@ def parse_args():
     return dict_args
 
 
-#if __name__ == '__main__':
-    #args = parse_args()
-    #if MPI.COMM_WORLD.Get_rank() == 0:
-        #logger.configure()
-    ## Run actual script.
-    #run(**args)
-
-
-#      QLEARNING MAIN
-if __name__ == '__main__':
+def main():
+    """ Q-learning """
     args = parse_args()
     env = gym.make(args['env_id'])
     logger.set_level(logger.INFO)
-    #env = gym.wrappers.Monitor(env, '/tmp/cartpole-experiment-1', force=True)
-        # video_callable=lambda count: count % 10 == 0)
-    #goal_average_steps = 255
     max_number_of_steps = 10000
     number_of_episodes = 1000
     last_time_steps_reward = np.ndarray(0)
-    number_of_features = env.observation_space.n
+    # number_of_features = env.observation_space.n
     # File to store que Q function
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    fileName = "./q_functions/" + timestr + ".qf"
+    file_name = "./q_functions/" + timestr + ".qf"
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
-                    alpha=0.4, gamma=0.80, epsilon = args['epsilon'])
-    #Loads Q function
-    if args['qfunction'] != None:
-      with open(args['qfunction'], "rb") as fp:   # Unpickling
-        qlearn.q = pickle.load(fp)
-        fp.close()
+                              alpha=0.4, gamma=0.80, epsilon=args['epsilon'])
+    # Loads Q function
+    if args['qfunction'] is not None:
+        with open(args['qfunction'], "rb") as file_p:   # Unpickling
+            logger.info('Loading qfunction: %s' % args['qfunction'])
+            qlearn.q = pickle.load(file_p)
+            file_p.close()
 
     episode_trace = []
-
     for i_episode in range(number_of_episodes):
         observation = env.reset()
         reward = 0
         state = build_state(observation)
-        print("Episode: {}/{}".format(i_episode, number_of_episodes))
-
+        logger.info("Episode: %d/%d" % (i_episode, number_of_episodes))
         if args['learning']:
-          os.makedirs(os.path.dirname(fileName), exist_ok=True)
-          with open(fileName, "wb") as fp:   #Pickling
-            logger.info('Saving Q function to file: {}'.format(fileName))
-            pickle.dump(qlearn.q, fp)
-            fp.close()
-
-        for t in range(max_number_of_steps):
-          if t > 1: # to have previous step reading
-            if t % 10 == 0:
-              #print("step: {}/{}, Local Reward: {}".format(t, max_number_of_steps, reward))
-              print("step: {}/{}".format(t, max_number_of_steps))
-            # env.render()
-            #print(qlearn.q)
-
-            # Pick an action based on the current state
-            #print(state)
-            action = qlearn.chooseAction(state)
-            # Execute the action and get feedback
-            observation, reward, done, info = env.step(action)
-            nextState = build_state(observation)
-            #print(info)
-            episode_trace.append([info['self_state']['lon'], info['self_state']['lat'], info['self_state']['alt']])
-
-            #print(observation)
-            #print(nextState)
-            
-            if not(done) and t == max_number_of_steps - 1:
-              done = True
-
-            if not(done):
-                if args['learning']:
-                  qlearn.learn(state, action, reward, nextState)
-                state = nextState
-            else:
-                # Q-learn stuff
-                #reward = -1000 ## reward alway given by env, env when dead
-                if args['learning']:
-                  qlearn.learn(state, action, reward, nextState)
-                last_time_steps_reward = np.append(last_time_steps_reward, [reward])
-                t = max_number_of_steps - 1
-            # Change of Context
-            if info['change_of_context']:
-              qlearn.actions = range(info['new_context_n_actions'])
-              state = build_state(info['obs_context_change'])
-
-            if done:
-              break # TODO: get rid of all breaks
-
+            os.makedirs(os.path.dirname(file_name), exist_ok=True)
+            with open(file_name, "wb") as file_p:   # Pickling
+                logger.info('Saving Q function to file: %s' % file_name)
+                pickle.dump(qlearn.q, file_p)
+                file_p.close()
+        for step_t in range(max_number_of_steps):
+            if step_t > 1:  # to have previous step reading
+                if step_t % 10 == 0:
+                    logger.info("step: %d/%d" % (step_t, max_number_of_steps))
+                # Pick an action based on the current state
+                action = qlearn.chooseAction(state)
+                # Execute the action and get feedback
+                observation, reward, done, info = env.step(action)
+                next_state = build_state(observation)
+                episode_trace.append([info['self_state']['lon'],
+                                      info['self_state']['lat'],
+                                      info['self_state']['alt']])
+                # print(observation)
+                # print(next_state)
+                if not(done) and step_t == max_number_of_steps - 1:
+                    done = True
+                if not done:
+                    if args['learning']:
+                        qlearn.learn(state, action, reward, next_state)
+                    state = next_state
+                else:
+                    # Q-learn stuff
+                    if args['learning']:
+                        qlearn.learn(state, action, reward, next_state)
+                    last_time_steps_reward = np.append(last_time_steps_reward,
+                                                       [reward])
+                    step_t = max_number_of_steps - 1
+                if done:
+                    break  # TODO: get rid of all breaks
         timestr = time.strftime("%Y%m%d-%H%M%S")
         file_trace = "./traces/" + timestr + ".csv"
         os.makedirs(os.path.dirname(file_trace), exist_ok=True)
         trace_file = open(file_trace, 'w')
-        logger.info('Saving trace of episode in: {}'.format(file_trace))
+        logger.info('Saving trace of episode in: %s' % file_trace)
         for item in episode_trace:
             trace_file.write("{}, {}, {}\n".format(item[0], item[1], item[2]))
         del episode_trace[:]
 
-    #l = last_time_steps_reward.tolist()
-    #print("Rewards of last_time_steps")
-    #print(last_time_steps_reward)
-    #print(l.sort())
-    #logger.info("Overall score: {:0.2f}".format(last_time_steps.mean()))
-    #logger.info("Best 100 score: {:0.2f}".format(reduce(lambda x, y: x + y, l[-100:]) / len(l[-100:])))
 
-    #env.monitor.close()
-    # gym.upload('/tmp/cartpole-experiment-1', algorithm_id='vmayoral simple Q-learning', api_key='your-key')
+if __name__ == '__main__':
+    main()
