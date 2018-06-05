@@ -72,7 +72,7 @@ def main():
     env = gym.make(args['env_id'])
     logger.set_level(logger.INFO)
     max_number_of_steps = 10000
-    number_of_episodes = 1000
+    number_of_episodes = 10000
     last_time_steps_reward = np.ndarray(0)
     # number_of_features = env.observation_space.n
     # File to store que Q function
@@ -111,7 +111,8 @@ def main():
                 next_state = build_state(observation)
                 episode_trace.append([info['self_state']['lon'],
                                       info['self_state']['lat'],
-                                      info['self_state']['alt']])
+                                      info['self_state']['alt'],
+				      reward])
                 # print(observation)
                 # print(next_state)
                 if not(done) and step_t == max_number_of_steps - 1:
