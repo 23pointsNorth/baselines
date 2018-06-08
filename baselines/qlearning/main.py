@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument('--qfunction', type=str, default = None)
     boolean_flag(parser, 'learning', default=True)
     parser.add_argument('--epsilon', type=float, default = .3)
+    boolean_flag(parser, 'drop_payload_agent', default=False)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if we do specify them
     # they agree with the other parameters
@@ -78,15 +79,33 @@ def main():
     # File to store que Q function
     timestr = time.strftime("%Y%m%d-%H%M%S")
     file_name = "./q_functions/" + timestr + ".qf"
+
+    # Only dropping payload agent
+    if args['drop_payload_agent']:
+        logger.info('Exploitation drop payload agent selected')
+        env.env.only_drop_payload_agent = True
+        if args['qfunction'] is None:
+            logger.error('Q-function not espicified')
+            return 0
+        # Turning off exploration
+        args['epsilon'] = 0
+        args['learning'] = False
+        number_of_episodes = 1
+
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
                               alpha=0.4, gamma=0.80, epsilon=args['epsilon'])
     # Loads Q function
     if args['qfunction'] is not None:
-        with open(args['qfunction'], "rb") as file_p:   # Unpickling
-            logger.info('Loading qfunction: %s' % args['qfunction'])
-            qlearn.q = pickle.load(file_p)
-            file_p.close()
+        try:
+            with open(args['qfunction'], "rb") as file_p:   # Unpickling
+                logger.info('Loading qfunction: %s' % args['qfunction'])
+                qlearn.q = pickle.load(file_p)
+                file_p.close()
+        except IOError:
+            logger.error('Q-Function file does not exists: %s'
+                         % args['qfunction'])
+            return 0
 
     episode_trace = []
     for i_episode in range(number_of_episodes):
@@ -112,7 +131,7 @@ def main():
                 episode_trace.append([info['self_state']['lon'],
                                       info['self_state']['lat'],
                                       info['self_state']['alt'],
-				      reward])
+                                      reward])
                 # print(observation)
                 # print(next_state)
                 if not(done) and step_t == max_number_of_steps - 1:
