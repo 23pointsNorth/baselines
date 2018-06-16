@@ -79,6 +79,7 @@ def main():
     # File to store que Q function
     timestr = time.strftime("%Y%m%d-%H%M%S")
     file_name = "./q_functions/" + timestr + ".qf"
+    file_reward = "./rewards/" + timestr + ".csv"
 
     # Only dropping payload agent
     if args['drop_payload_agent']:
@@ -157,6 +158,13 @@ def main():
         for item in episode_trace:
             trace_file.write("{}, {}, {}\n".format(item[0], item[1], item[2]))
         del episode_trace[:]
+        trace_file.close()
+        # Reward trace to file
+        os.makedirs(os.path.dirname(file_reward), exist_ok=True)
+        reward_file = open(file_reward, 'a')
+        logger.info('Saving episode reward to: %s' % file_reward)
+        reward_file.write("{}\n".format(reward))
+        reward_file.close()
 
 
 if __name__ == '__main__':
