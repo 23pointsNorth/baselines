@@ -78,7 +78,7 @@ def main():
     # number_of_features = env.observation_space.n
     # File to store que Q function
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    file_name = "./q_functions/" + timestr + ".qf"
+    file_name = "./q_functions/" + timestr + '-' + args['env_id'] + ".qf"
     file_reward = "./rewards/" + timestr + ".csv"
 
     # Only dropping payload agent
@@ -106,7 +106,7 @@ def main():
         except IOError:
             logger.error('Q-Function file does not exists: %s'
                          % args['qfunction'])
-            return 0
+            return 1
 
     episode_trace = []
     for i_episode in range(number_of_episodes):
