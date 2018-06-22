@@ -1,67 +1,35 @@
 import argparse
 import time
 import os
-import logging
-from baselines import logger, bench
-from baselines.common.misc_util import (
-    set_global_seeds,
-    boolean_flag,
-)
-import baselines.ddpg.training as training
-from baselines.ddpg.models import Actor, Critic
-from baselines.ddpg.memory import Memory
-from baselines.ddpg.noise import *
+import pickle
+from baselines import logger
+from baselines.common.misc_util import boolean_flag
+from baselines.qlearning import qlearning
 
 import gym
 import cogle_mavsim
 from gym_recording.wrappers import TraceRecordingWrapper
 import tensorflow as tf
-from mpi4py import MPI
-from datetime import datetime
 import numpy as np
-from baselines.qlearning import qlearning
 from qlearning import build_state
-import pickle
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    """ Parse arguments from command line """
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--env-id', type=str, default='apl-nav-godiland-v0')
-    boolean_flag(parser, 'render-eval', default=False)
-    boolean_flag(parser, 'layer-norm', default=True)
-    boolean_flag(parser, 'render', default=False)
-    boolean_flag(parser, 'normalize-returns', default=False)
-    boolean_flag(parser, 'normalize-observations', default=True)
-    parser.add_argument('--seed', help='RNG seed', type=int, default=0)
-    parser.add_argument('--critic-l2-reg', type=float, default=1e-2)
-    parser.add_argument('--batch-size', type=int, default=64)  # per MPI worker
-    parser.add_argument('--actor-lr', type=float, default=(1e-4)/10.) #Optimially 100
-    parser.add_argument('--critic-lr', type=float, default=(1e-3)/10.) # optimially 100
-    boolean_flag(parser, 'popart', default=False)
-    parser.add_argument('--gamma', type=float, default=0.0)
-    parser.add_argument('--reward-scale', type=float, default=1.)
-    parser.add_argument('--clip-norm', type=float, default=None)
-    parser.add_argument('--nb-epochs', type=int, default=500)  # with default settings, perform 1M steps total
-    parser.add_argument('--nb-epoch-cycles', type=int, default=20)
-    parser.add_argument('--nb-train-steps', type=int, default=200)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-eval-steps', type=int, default=200)  # per epoch cycle and MPI worker
-    parser.add_argument('--nb-rollout-steps', type=int, default=20)  # per epoch cycle and MPI worker
-    parser.add_argument('--noise-type', type=str, default='adaptive-param_0.2')  # choices are adaptive-param_xx, ou_xx, normal_xx, none
     parser.add_argument('--num-timesteps', type=int, default=None)
-    parser.add_argument('--load-network-id', type=int, default=None)
-    boolean_flag(parser, 'evaluation', default=False)
-    boolean_flag(parser, 'latest', default=False)
-    boolean_flag(parser, 'plot-info', default=False)
-    parser.add_argument('--custom-log-dir', type=str, default='./')
-    parser.add_argument('--qfunction', type=str, default = None)
+    parser.add_argument('--qfunction', type=str, default=None)
     boolean_flag(parser, 'learning', default=True)
-    parser.add_argument('--epsilon', type=float, default = .3)
+    parser.add_argument('--epsilon', type=float, default=.3)
     boolean_flag(parser, 'drop_payload_agent', default=False)
     args = parser.parse_args()
-    # we don't directly specify timesteps for this script, so make sure that if we do specify them
-    # they agree with the other parameters
+    # we don't directly specify timesteps for this script, so make sure that if
+    # we do specify them they agree with the other parameters
     if args.num_timesteps is not None:
-        assert(args.num_timesteps == args.nb_epochs * args.nb_epoch_cycles * args.nb_rollout_steps)
+        assert args.num_timesteps == args.nb_epochs * args.nb_epoch_cycles *\
+            args.nb_rollout_steps
     dict_args = vars(args)
     del dict_args['num_timesteps']
     return dict_args
@@ -75,12 +43,10 @@ def main():
     max_number_of_steps = 10000
     number_of_episodes = 10000
     last_time_steps_reward = np.ndarray(0)
-    # number_of_features = env.observation_space.n
     # File to store que Q function
     timestr = time.strftime("%Y%m%d-%H%M%S")
     file_name = "./q_functions/" + timestr + '-' + args['env_id'] + ".qf"
     file_reward = "./rewards/" + timestr + ".csv"
-
     # Only dropping payload agent
     if args['drop_payload_agent']:
         logger.info('Exploitation drop payload agent selected')
@@ -92,7 +58,6 @@ def main():
         args['epsilon'] = 0
         args['learning'] = False
         number_of_episodes = 1
-
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
                               alpha=0.4, gamma=0.80, epsilon=args['epsilon'])
@@ -107,13 +72,12 @@ def main():
             logger.error('Q-Function file does not exists: %s'
                          % args['qfunction'])
             return 1
-
     episode_trace = []
     for i_episode in range(number_of_episodes):
         observation = env.reset()
         reward = 0
         state = build_state(observation)
-        logger.info("Episode: %d/%d" % (i_episode, number_of_episodes))
+        logger.info("Episode: %d/%d" % (i_episode + 1, number_of_episodes))
         if args['learning']:
             os.makedirs(os.path.dirname(file_name), exist_ok=True)
             with open(file_name, "wb") as file_p:   # Pickling
@@ -133,8 +97,6 @@ def main():
                                       info['self_state']['lat'],
                                       info['self_state']['alt'],
                                       reward])
-                # print(observation)
-                # print(next_state)
                 if not(done) and step_t == max_number_of_steps - 1:
                     done = True
                 if not done:
