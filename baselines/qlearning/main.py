@@ -41,7 +41,7 @@ def main():
     env = gym.make(args['env_id'])
     logger.set_level(logger.INFO)
     max_number_of_steps = 10000
-    number_of_episodes = 10000
+    number_of_episodes = 100000
     last_time_steps_reward = np.ndarray(0)
     # File to store que Q function
     timestr = time.strftime("%Y%m%d-%H%M%S")
