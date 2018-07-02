@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--qfunction', type=str, default=None)
     boolean_flag(parser, 'learning', default=True)
     parser.add_argument('--epsilon', type=float, default=.3)
+    parser.add_argument('--alpha', type=float, default=.4)
     boolean_flag(parser, 'drop_payload_agent', default=False)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if
@@ -60,7 +61,8 @@ def main():
         number_of_episodes = 1
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
-                              alpha=0.4, gamma=0.80, epsilon=args['epsilon'])
+                              alpha=args['alpha'], gamma=0.80,
+                              epsilon=args['epsilon'])
     # Loads Q function
     if args['qfunction'] is not None:
         try:
