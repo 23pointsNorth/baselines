@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument('--epsilon', type=float, default=.3)
     parser.add_argument('--alpha', type=float, default=.4)
     boolean_flag(parser, 'drop_payload_agent', default=False)
+    boolean_flag(parser, 'random_action', default=True)
     args = parser.parse_args()
     # we don't directly specify timesteps for this script, so make sure that if
     # we do specify them they agree with the other parameters
@@ -41,7 +42,7 @@ def main():
     args = parse_args()
     env = gym.make(args['env_id'])
     logger.set_level(logger.INFO)
-    max_number_of_steps = 10000
+    max_number_of_steps = 100
     number_of_episodes = 100000
     last_time_steps_reward = np.ndarray(0)
     # File to store que Q function
@@ -62,7 +63,8 @@ def main():
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
                               alpha=args['alpha'], gamma=0.80,
-                              epsilon=args['epsilon'])
+                              epsilon=args['epsilon'],
+                              random_action=args['random_action'])
     # Loads Q function
     if args['qfunction'] is not None:
         try:
@@ -80,12 +82,6 @@ def main():
         reward = 0
         state = build_state(observation)
         logger.info("Episode: %d/%d" % (i_episode + 1, number_of_episodes))
-        if args['learning']:
-            os.makedirs(os.path.dirname(file_name), exist_ok=True)
-            with open(file_name, "wb") as file_p:   # Pickling
-                logger.info('Saving Q function to file: %s' % file_name)
-                pickle.dump(qlearn.q, file_p)
-                file_p.close()
         for step_t in range(max_number_of_steps):
             if step_t > 1:  # to have previous step reading
                 if step_t % 10 == 0:
@@ -114,6 +110,12 @@ def main():
                     step_t = max_number_of_steps - 1
                 if done:
                     break  # TODO: get rid of all breaks
+        if args['learning']:
+            os.makedirs(os.path.dirname(file_name), exist_ok=True)
+            with open(file_name, "wb") as file_p:   # Pickling
+                logger.info('Saving Q function to file: %s' % file_name)
+                pickle.dump(qlearn.q, file_p)
+                file_p.close()
         timestr = time.strftime("%Y%m%d-%H%M%S")
         file_trace = "./traces/" + timestr + ".csv"
         os.makedirs(os.path.dirname(file_trace), exist_ok=True)
