@@ -117,14 +117,14 @@ def main():
                 pickle.dump(qlearn.q, file_p)
                 file_p.close()
         timestr = time.strftime("%Y%m%d-%H%M%S")
-        file_trace = "./traces/" + timestr + ".csv"
-        os.makedirs(os.path.dirname(file_trace), exist_ok=True)
-        trace_file = open(file_trace, 'w')
-        logger.info('Saving trace of episode in: %s' % file_trace)
-        for item in episode_trace:
-            trace_file.write("{}, {}, {}\n".format(item[0], item[1], item[2]))
-        del episode_trace[:]
-        trace_file.close()
+        #file_trace = "./traces/" + timestr + ".csv"
+        #os.makedirs(os.path.dirname(file_trace), exist_ok=True)
+        #trace_file = open(file_trace, 'w')
+        #logger.info('Saving trace of episode in: %s' % file_trace)
+        #for item in episode_trace:
+            #trace_file.write("{}, {}, {}\n".format(item[0], item[1], item[2]))
+        #del episode_trace[:]
+        #trace_file.close()
         # Reward trace to file
         os.makedirs(os.path.dirname(file_reward), exist_ok=True)
         reward_file = open(file_reward, 'a')
