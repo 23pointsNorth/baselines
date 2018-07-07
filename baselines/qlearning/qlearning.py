@@ -12,12 +12,13 @@ import numpy
 import random
 
 class QLearn:
-    def __init__(self, actions, epsilon, alpha, gamma):
+    def __init__(self, actions, epsilon, alpha, gamma, random_action):
         self.q = {}
         self.epsilon = epsilon  # exploration constant
         self.alpha = alpha      # discount constant
         self.gamma = gamma      # discount factor
         self.actions = actions
+        self.random_action = random_action # on equal Q-value choose random
 
     def getQ(self, state, action):
         return self.q.get((state, action), 0.0)
@@ -38,7 +39,6 @@ class QLearn:
     def chooseAction(self, state, return_q=False):
         q = [self.getQ(state, a) for a in self.actions]
         maxQ = max(q)
-
         if random.random() < self.epsilon:
             #print("choosing randomly")
             #print(self.actions)
@@ -52,14 +52,13 @@ class QLearn:
           count = q.count(maxQ)
           # In case there're several state-action max values
           # we select a random one among them
-          if count > 1:
+          if count > 1 and self.random_action:
               best = [i for i in range(len(self.actions)) if q[i] == maxQ]
               #print("More than one action to choose from:")
               #print(best)
               i = random.choice(best)
           else:
               i = q.index(maxQ)
-
         action = self.actions[i]
         #print("QLearning Action: {}, state: {}".format(action, state))
         #print(q)
