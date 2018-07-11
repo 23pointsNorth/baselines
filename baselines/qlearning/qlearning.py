@@ -40,10 +40,10 @@ class QLearn:
         q = [self.getQ(state, a) for a in self.actions]
         maxQ = max(q)
         if random.random() < self.epsilon:
-            #print("choosing randomly")
-            #print(self.actions)
+            print("choosing randomly")
+            print(self.actions)
             i = random.choice(self.actions)
-            #print("random action: {}".format(i))
+            print("random action: {}".format(i))
             #minQ = min(q); mag = max(abs(minQ), abs(maxQ))
             ## add random values to all the actions, recalculate maxQ
             #q = [q[i] + random.random() * mag - .5 * mag for i in range(len(self.actions))]
@@ -52,12 +52,17 @@ class QLearn:
           count = q.count(maxQ)
           # In case there're several state-action max values
           # we select a random one among them
-          if count > 1 and self.random_action:
+          if count > 1:
+            if self.random_action:
               best = [i for i in range(len(self.actions)) if q[i] == maxQ]
-              #print("More than one action to choose from:")
+              #print("More than one action to choose from: Choosing randmly")
               #print(best)
               i = random.choice(best)
+            else:
+              #print("More than one action to choose from: Choosing first")
+              i = q.index(maxQ)
           else:
+              #print("Only one to choose from")
               i = q.index(maxQ)
         action = self.actions[i]
         #print("QLearning Action: {}, state: {}".format(action, state))
