@@ -40,10 +40,10 @@ class QLearn:
         q = [self.getQ(state, a) for a in self.actions]
         maxQ = max(q)
         if random.random() < self.epsilon:
-            print("choosing randomly")
-            print(self.actions)
+            #print("choosing randomly")
+            #print(self.actions)
             i = random.choice(self.actions)
-            print("random action: {}".format(i))
+            #print("random action: {}".format(i))
             #minQ = min(q); mag = max(abs(minQ), abs(maxQ))
             ## add random values to all the actions, recalculate maxQ
             #q = [q[i] + random.random() * mag - .5 * mag for i in range(len(self.actions))]
