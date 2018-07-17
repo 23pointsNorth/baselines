@@ -2,6 +2,7 @@ import argparse
 import time
 import os
 import pickle
+import numpy as np
 from baselines import logger
 from baselines.common.misc_util import boolean_flag
 from baselines.qlearning import qlearning
@@ -9,8 +10,6 @@ from baselines.qlearning import qlearning
 import gym
 import cogle_mavsim
 from gym_recording.wrappers import TraceRecordingWrapper
-import tensorflow as tf
-import numpy as np
 from qlearning import build_state
 
 
@@ -27,13 +26,7 @@ def parse_args():
     boolean_flag(parser, 'drop_payload_agent', default=False)
     boolean_flag(parser, 'random_action', default=True)
     args = parser.parse_args()
-    # we don't directly specify timesteps for this script, so make sure that if
-    # we do specify them they agree with the other parameters
-    if args.num_timesteps is not None:
-        assert args.num_timesteps == args.nb_epochs * args.nb_epoch_cycles *\
-            args.nb_rollout_steps
     dict_args = vars(args)
-    del dict_args['num_timesteps']
     return dict_args
 
 
