@@ -53,6 +53,8 @@ def main():
         args['epsilon'] = 0
         args['learning'] = False
         number_of_episodes = 1
+    if not args['random_action']:
+        args['epsilon'] = 0
     # The Q-learn algorithm
     qlearn = qlearning.QLearn(actions=range(env.action_space.n),
                               alpha=args['alpha'], gamma=0.80,

@@ -36,8 +36,56 @@ class QLearn:
             #self.q[(state, action)] = oldv + self.alpha * (value - oldv)
             self.q[(state, action)] = (1. - self.alpha) * self.q[(state, action)] + self.alpha * (value)
 
+    def is_state_visited(self, state):
+        flag = False
+        for action in self.actions:
+            if (state, action) in self.q:
+                flag = True
+                break
+        return flag
+
+    def distance_states(self, state_1, state_2):
+        weights = [1., 1., 1., .2, 1., .2]
+        distance = .0
+        for index, weight in enumerate(weights):
+            temp_dist = abs(int(state_1[index]) - int(state_2[index]))
+            if index == 3 or index == 5:  # headings are circular
+                temp_dist = 8 - temp_dist
+            if index == 1:  # normalisin hazard
+                temp_dist /= 2
+            if index == 2:  # normalisin distance to hiker
+                temp_dist /= 3
+            distance += weight * temp_dist
+        return distance
+
+    def closest_state(self, state):
+        distance = 100.
+        the_state = 0
+        state_key = []
+        state_string = str(state)
+        while len(state_string) < 6:
+            state_string = '0' + state_string
+        for key in self.q:
+            key_string = str(key[0])
+            while len(key_string) < 6:
+                key_string = '0' + key_string
+            temp_distance = self.distance_states(state_string,
+                                                 key_string)
+            #print('state: ', key_string, ', distance:', temp_distance)
+            if temp_distance < distance:
+                distance = temp_distance
+                the_state = key_string
+        #print('best distance: ', distance, ', state: ', the_state)
+        return int(the_state)
+
     def chooseAction(self, state, return_q=False):
         q = [self.getQ(state, a) for a in self.actions]
+        #print("state: ", state)
+        #if not self.is_state_visited(state):
+            ##print("state not q found: ", state)
+            #state = self.closest_state(state)
+            ##print("closests state: ", state)
+            #q = [self.getQ(state, a) for a in self.actions]
         maxQ = max(q)
         if random.random() < self.epsilon:
             #print("choosing randomly")
@@ -62,11 +110,11 @@ class QLearn:
               #print("More than one action to choose from: Choosing first")
               i = q.index(maxQ)
           else:
-              #print("Only one to choose from")
+              #print("Only one max Q-value to choose from")
               i = q.index(maxQ)
         action = self.actions[i]
         #print("QLearning Action: {}, state: {}".format(action, state))
-        #print(q)
+        print(q)
         if return_q: # if they want it, give it!
             return action, q
         return action
