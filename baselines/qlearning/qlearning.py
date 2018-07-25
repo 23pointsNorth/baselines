@@ -80,12 +80,12 @@ class QLearn:
 
     def chooseAction(self, state, return_q=False):
         q = [self.getQ(state, a) for a in self.actions]
-        print("state: ", state)
-        if not self.is_state_visited(state):
-            #print("state not q found: ", state)
-            state = self.closest_state(state)
-            #print("closests state: ", state)
-            q = [self.getQ(state, a) for a in self.actions]
+        #print("state: ", state)
+        #if not self.is_state_visited(state):
+            ##print("state not q found: ", state)
+            #state = self.closest_state(state)
+            ##print("closests state: ", state)
+            #q = [self.getQ(state, a) for a in self.actions]
         maxQ = max(q)
         if random.random() < self.epsilon:
             #print("choosing randomly")
