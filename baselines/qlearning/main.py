@@ -86,6 +86,10 @@ def main():
                 # Execute the action and get feedback
                 observation, reward, done, info = env.step(action)
                 next_state = build_state(observation)
+                logger.info('lon: ', info['self_state']['lon'],
+                            ', lat: ', info['self_state']['lat'],
+                            ', alt: ', info['self_state']['alt'],
+                            ', heding: ', info['self_state']['heading'])
                 episode_trace.append([info['self_state']['lon'],
                                       info['self_state']['lat'],
                                       info['self_state']['alt'],
