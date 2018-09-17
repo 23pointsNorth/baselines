@@ -9,7 +9,7 @@ from baselines.qlearning import qlearning
 
 import gym
 import cogle_mavsim
-from gym_recording.wrappers import TraceRecordingWrapper
+#from gym_recording.wrappers import TraceRecordingWrapper
 from qlearning import build_state
 
 
